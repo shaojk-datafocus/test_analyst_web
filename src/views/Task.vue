@@ -5,7 +5,7 @@
     <el-breadcrumb-item>活动管理</el-breadcrumb-item>
   </el-breadcrumb>
   <!-- 查询框 -->
-  <el-row gutter="10">
+  <el-row :gutter="10">
     <el-col :span="12">
       <el-input
         placeholder="请输入内容"
@@ -31,9 +31,9 @@
     size="mini"
   >
     <el-table-column type="selection" width="36"> </el-table-column>
-    <el-table-column prop="name" label="名称"></el-table-column>
+    <el-table-column prop="taskname" label="名称"></el-table-column>
     <el-table-column prop="description" label="描述"></el-table-column>
-    <el-table-column prop="author" label="编写人"></el-table-column>
+    <el-table-column prop="creator" label="编写人"></el-table-column>
     <!-- <el-table-column prop="tag" label="标签">
       <template #default="scope">
         <div v-for="(item,key) in scope.row.tag.split(',')" :key="key">
@@ -84,29 +84,19 @@ export default {
       search: '',
       currentPage: 1,
       total: 256,
-      tableData: [
-        {
-          name: 'hlt.v5.api.testCollection',
-          address: '测试api综合功能',
-          author: '邵俊凯',
-          status: true,
-          execute_time: '2021-06-03 12:32:12',
-          time: '3min 5s',
-          tag: 'API,接口级'
-        },
-        {
-          name: 'hlt.v5.api.testCollection.testCreateUser',
-          address: '测试api基础功能',
-          author: '汪荣涛',
-          status: false,
-          execute_time: '2021-06-03 12:32:12',
-          time: '3min 5s',
-          tag: ''
-        }
-      ]
+      tableData: []
     }
   },
+  created () {
+    this.getTaskList()
+  },
   methods: {
+    async getTaskList () {
+      const { data: res } = await this.$axios.get('/task/list')
+      if (!res.success) return this.$message.error(res.errCode)
+      this.tableData = res.data
+      console.log(res.data)
+    },
     handleSizeChange (val) {
       console.log(`每页 ${val} 条`)
     },

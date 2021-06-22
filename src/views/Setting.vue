@@ -5,7 +5,7 @@
     <el-breadcrumb-item>活动管理</el-breadcrumb-item>
   </el-breadcrumb>
   <!-- 查询框 -->
-  <el-row gutter="10">
+  <el-row :gutter="10">
     <el-col :span="12">
       <el-input
         placeholder="请输入内容"

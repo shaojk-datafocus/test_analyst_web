@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Example from '../views/Example.vue'
+import ExampleDetail from '../views/ExampleDetail.vue'
 import Task from '../views/Task.vue'
 import Setting from '../views/Setting.vue'
 
@@ -9,7 +10,8 @@ const routes = [
   { path: '/', redirect: '/dashboard' },
   { path: '/login', component: Login },
   { path: '/dashboard', component: Dashboard },
-  { path: '/example', component: Example },
+  { path: '/example', component: Example, children: [{ path: '/:id', component: ExampleDetail }] },
+  { path: '/example/:id', component: ExampleDetail },
   { path: '/task', component: Task },
   { path: '/Setting', component: Setting }
   // {

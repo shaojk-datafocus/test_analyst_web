@@ -43,6 +43,9 @@ export default {
       selectId: '/dashboard'
     }
   },
+  created () {
+    this.selectId = '/dashboard'
+  },
   methods: {
     handleSelect (index, indexPath) {
       this.selectId = index
