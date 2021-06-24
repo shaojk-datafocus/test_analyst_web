@@ -30,25 +30,32 @@
       tooltip-effect="dark"
       style="width: 100%"
       @selection-change="handleSelectionChange"
+      @row-dblclick="toggleSelection"
       size="mini"
     >
-      <el-table-column type="selection" width="36"> </el-table-column>
+      <el-table-column type="selection" width="36"></el-table-column>
       <el-table-column prop="testname" label="名称"></el-table-column>
-      <el-table-column prop="description" label="描述"></el-table-column>
+      <el-table-column prop="function" label="函数名"></el-table-column>
+      <el-table-column prop="module" label="所属模块"></el-table-column>
       <el-table-column prop="creator" label="创建人"></el-table-column>
       <el-table-column prop="status" label="状态">
         <template #default="scope">
-          <i
+          <i class="status el-icon-success" v-if="scope.row.status==='success'" title="成功"></i>
+          <i class="status el-icon-error" v-if="scope.row.status==='error'" title="错误"></i>
+          <i class="status el-icon-error" v-if="scope.row.status==='fail'" title="失败"></i>
+          <i class="status el-icon-loading" v-if="scope.row.status==='running'" title="执行中"></i>
+          <i class="status el-icon-loading" v-if="scope.row.status==='pending'" title="等待执行"></i>
+          <!-- <i
             :class="'status el-icon-' + (scope.row.status ? 'success' : 'error')"
-          ></i>
+          ></i> -->
         </template>
       </el-table-column>
       <el-table-column prop="execute_time" label="执行时间"></el-table-column>
       <el-table-column prop="elapse_time" label="耗时"></el-table-column>
       <el-table-column prop="operate" label="操作" width="150">
         <template #default="scope">
-          <el-button size="mini" @click="handleEdit(scope.$index, scope.row)"
-            >编辑</el-button>
+          <el-button size="mini" @click="handleDetail(scope.$index, scope.row)"
+            >查看</el-button>
           <el-popconfirm
             :title="'确定删除用例【'+scope.row.testname+'】吗？'"
             @confirm="handleDelete(scope.$index, scope.row)"
@@ -106,7 +113,6 @@
       title="是否确定执行临时任务？"
       v-model="tempTaskDialogVisible"
       width="50%"
-      @closed="dialogClosed()"
       >
       <el-form ref="tempTaskRef" :model="tempTaskForm" :rules="rules" label-width="80px">
         <el-form-item label="描述" prop="description">
@@ -115,14 +121,15 @@
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取 消</el-button>
-          <el-button type="primary" @click="addExample">确 定</el-button>
+          <el-button @click="tempTaskDialogVisible = false">取 消</el-button>
+          <el-button type="primary" @click="execTempTask">确 定</el-button>
         </span>
       </template>
     </el-dialog>
   </div>
 </template>
 <script>
+import { ElMessage } from 'element-plus'
 export default {
   data () {
     return {
@@ -139,7 +146,9 @@ export default {
         function: '',
         description: ''
       },
-      tempTaskForm: {},
+      tempTaskForm: {
+        description: ''
+      },
       rules: {
         testname: [
           { required: true, message: '请输入用例名称', trigger: 'blur' }
@@ -155,6 +164,24 @@ export default {
   },
   created () {
     this.getExampleList()
+  },
+  setup () {
+    return {
+      success (message) {
+        ElMessage({
+          showClose: true,
+          message: message,
+          type: 'success'
+        })
+      },
+      error (message) {
+        ElMessage({
+          showClose: true,
+          message: message,
+          type: 'error'
+        })
+      }
+    }
   },
   methods: {
     async getExampleList () {
@@ -179,15 +206,17 @@ export default {
         content.push(item.id)
       })
       console.log(content)
-      const { data: res } = await this.$axios.post('/task/createTemplateTask', { taskname: null, description: '', creator: '阿斯蒂芬', content: content })
+      const { data: res } = await this.$axios.post('/task/execTemplateTask', { taskname: null, description: this.tempTaskForm.description, creator: '阿斯蒂芬', content: content })
       if (!res.success) return this.$message.error(res.errCode)
-      console.log('addToTask Success')
+      this.success('创建临时任务成功')
+      this.$refs.multipleTable.clearSelection()
+      this.tempTaskDialogVisible = false
     },
     dialogClosed () {
       this.$refs.addExampleRef.resetFields() // 为什么resetFields无效?
       this.addExampleForm = {}
     },
-    handleEdit (index, row) {
+    handleDetail (index, row) {
       console.log(index)
       console.log(row)
       this.$router.push('/example/' + row.id)
@@ -195,6 +224,7 @@ export default {
     async handleDelete (index, row) {
       const { data: res } = await this.$axios.post('/example/delete/' + row.id)
       if (!res.success) return this.$message.error(res.errCode)
+      this.success('删除测试用例【' + row.testname + '】')
       this.getExampleList()
     },
     handleSizeChange (val) {
@@ -203,17 +233,18 @@ export default {
     handleCurrentChange (val) {
       console.log(`当前页: ${val}`)
     },
-    toggleSelection (rows) {
-      if (rows) {
-        rows.forEach(row => {
-          this.$refs.multipleTable.toggleRowSelection(row)
-        })
+    toggleSelection (row, column, event) {
+      if (row) {
+        this.$refs.multipleTable.toggleRowSelection(row)
       } else {
         this.$refs.multipleTable.clearSelection()
       }
     },
     handleSelectionChange (val) {
+      console.log(val)
+      console.log(typeof val)
       this.multipleSelection = val
+      console.log(this.multipleSelection)
     }
   }
 }

@@ -2,39 +2,28 @@
   <div>
     <!-- 面板屑 -->
     <el-breadcrumb separator-class="el-icon-arrow-right">
-      <el-breadcrumb-item :to="{ path: '/example' }">用例</el-breadcrumb-item>
-      <el-breadcrumb-item>{{ testForm.testname }}</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/task' }">用例</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ taskForm.taskname }}</el-breadcrumb-item>
     </el-breadcrumb>
     <el-row :gutter="20">
         <!-- 用例信息 -->
         <el-col :span="11">
-            <el-form ref="testRef" :model="testForm" :rules="rules" label-width="80px" :disabled='!editable' label-position="top">
-                <el-form-item label="用例名称" prop="testname" >
-                    <el-input v-model="testForm.testname" placeholder="请输入用例名称"></el-input>
+            <el-form ref="taskRef" :model="taskForm" :rules="rules" label-width="80px" :disabled='!editable' label-position="top">
+                <el-form-item label="任务名称" prop="taskname" >
+                    <el-input v-model="taskForm.taskname" placeholder="请输入用例名称"></el-input>
                 </el-form-item>
-                <el-row :gutter="20">
-                    <el-col :span="9">
-                        <el-form-item label="模块路径" prop="module">
-                            <el-input v-model="testForm.module" placeholder="例: hlt.v5.example.testCollection"></el-input>
-                        </el-form-item>
-                    </el-col>
-                    <el-col :span="9">
-                        <el-form-item label="函数名" prop="function">
-                            <el-input v-model="testForm.function" placeholder="例: test_example_01"></el-input>
-                        </el-form-item>
-                    </el-col>
-                    <el-col :span="6">
-                        <el-form-item label="创建者" prop="creator">
-                            <el-input v-model="testForm.creator" placeholder=""></el-input>
-                        </el-form-item>
-                    </el-col>
-                </el-row>
+                <el-form-item label="创建者" prop="creator">
+                    <el-input v-model="taskForm.creator" placeholder=""></el-input>
+                </el-form-item>
                 <el-form-item label="描述" prop="description">
-                    <el-input type="textarea" v-model="testForm.description" :autosize="{ minRows: 6}"></el-input>
+                    <el-input type="textarea" v-model="taskForm.description" :autosize="{ minRows: 6}"></el-input>
+                </el-form-item>
+                <el-form-item label="描述" prop="content">
+                    <el-input type="textarea" v-model="taskForm.description" :autosize="{ minRows: 6}"></el-input>
                 </el-form-item>
                 <el-form-item>
-                    <el-button type="primary" ref="saveExample" @click="saveExample" :disabled="!editable">保存配置</el-button>
-                    <el-button type="danger" @click="deleteExample" :disabled="!editable">删除</el-button>
+                    <el-button type="primary" ref="saveTask" @click="saveTask" :disabled="!editable">保存配置</el-button>
+                    <el-button type="danger" @click="deleteTask" :disabled="!editable">删除</el-button>
                 </el-form-item>
             </el-form>
         </el-col>
@@ -106,9 +95,9 @@ export default {
   data () {
     return {
       editable: false,
-      testForm: {},
+      taskForm: {},
       rules: {
-        testname: [
+        taskname: [
           { required: true, message: '请输入用例名称', trigger: 'blur' }
         ],
         module: [
@@ -122,8 +111,9 @@ export default {
     }
   },
   created () {
-    this.getExampleDetail(this.$route.params.id)
-    this.getExampleRecord(this.$route.params.id)
+    this.getTaskDetail(this.$route.params.id)
+    console.log(this.$route.params.id)
+    console.log('到了?')
   },
   setup () {
     return {
@@ -144,15 +134,15 @@ export default {
     }
   },
   methods: {
-    async getExampleDetail (id) {
-      const { data: res } = await this.$axios.get('/example/' + id)
+    async getTaskDetail (id) {
+      const { data: res } = await this.$axios.get('/task/' + id)
       if (!res.success) return this.$message.error(res.errCode)
-      this.testForm = res.data
+      this.taskForm = res.data
       this.editable = true
-      console.log(this.testForm)
+      console.log(this.taskForm)
     },
-    async getExampleRecord (id) {
-      const { data: res } = await this.$axios.get('/example/' + id + '/record')
+    async getTaskRecord (id) {
+      const { data: res } = await this.$axios.get('/task/' + id + '/record')
       if (!res.success) return this.$message.error(res.errCode)
       this.recordData = []
       res.data.forEach((record) => {
@@ -182,24 +172,24 @@ export default {
       })
       console.log(this.recordData)
     },
-    async saveExample () {
-      const { data: res } = await this.$axios.post('/example/update', {
-        id: this.testForm.id,
-        testname: this.testForm.testname,
-        module: this.testForm.module,
-        function: this.testForm.function,
-        creator: this.testForm.creator,
-        description: this.testForm.description
+    async saveTask () {
+      const { data: res } = await this.$axios.post('/task/update', {
+        id: this.taskForm.id,
+        taskname: this.taskForm.taskname,
+        module: this.taskForm.module,
+        function: this.taskForm.function,
+        creator: this.taskForm.creator,
+        description: this.taskForm.description
       })
       if (!res.success) return this.$message.error(res.errCode)
       this.success('保存用例成功')
-      this.$router.push('/example')
+      this.$router.push('/task')
     },
-    async deleteExample () {
-      const { data: res } = await this.$axios.post('/example/delete/' + this.testForm.id)
+    async deleteTask () {
+      const { data: res } = await this.$axios.post('/task/delete/' + this.taskForm.id)
       if (!res.success) return this.error(res.errCode)
       this.success('删除用例成功')
-      this.$router.push('/example')
+      this.$router.push('/task')
     }
   }
 }
