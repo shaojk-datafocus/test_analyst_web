@@ -5,7 +5,7 @@ import Example from '../views/Example.vue'
 import ExampleDetail from '../views/ExampleDetail.vue'
 import Task from '../views/Task.vue'
 import TaskDetail from '../views/TaskDetail.vue'
-import Setting from '../views/Setting.vue'
+import System from '../views/System.vue'
 
 const routes = [
   { path: '/', redirect: '/dashboard' },
@@ -15,7 +15,7 @@ const routes = [
   { path: '/example/:id', component: ExampleDetail },
   { path: '/task', component: Task },
   { path: '/task/:id', component: TaskDetail },
-  { path: '/Setting', component: Setting }
+  { path: '/system', component: System }
   // {
   //   path: '/example', // 子路由
   //   component: Example,

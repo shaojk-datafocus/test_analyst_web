@@ -6,21 +6,50 @@
     </el-breadcrumb>
     <!-- 查询框 -->
     <el-row :gutter="10">
-      <el-col :span="12">
+      <el-col :span="6">
         <el-input
-          placeholder="请输入内容"
-          v-model="search"
+          placeholder="按名称搜索"
+          v-model="testname"
           class="input-with-select"
           clearable
+          size='mini'
+          @change="getExampleList"
         >
-          <template #append>
-            <el-button icon="el-icon-search"></el-button>
-          </template>
         </el-input>
       </el-col>
-      <el-col :span="8">
-        <el-button type="primary" @click="dialogVisible=true">新增用例</el-button>
-        <el-button type="warning" :disabled="multipleSelection.length<=0" @click="tempTaskDialogVisible=true">执行临时任务</el-button>
+      <el-col :span="6">
+        <el-select v-model="modules" multiple placeholder="所属模块" size='mini' style="width: 100%" filterable @change="getExampleList">
+          <el-option
+            v-for="item in optionsModules"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value">
+          </el-option>
+        </el-select>
+      </el-col>
+      <el-col :span="3">
+        <el-select v-model="creator" multiple placeholder="创建者" size='mini' style="width: 100%" filterable @change="getExampleList">
+          <el-option
+            v-for="item in optionsCreator"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value">
+          </el-option>
+        </el-select>
+      </el-col>
+      <el-col :span="3">
+        <el-select v-model="status" multiple placeholder="状态" size='mini' style="width: 100%" @change="getExampleList">
+          <el-option
+            v-for="item in optionsStatus"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value">
+          </el-option>
+        </el-select>
+      </el-col>
+      <el-col :span="3">
+        <el-button type="primary" @click="dialogVisible=true" size='mini'>新增用例</el-button>
+        <el-button type="warning" :disabled="multipleSelection.length<=0" @click="tempTaskDialogVisible=true" size='mini'>执行临时任务</el-button>
       </el-col>
     </el-row>
     <!-- 用例内容表格展示 -->
@@ -37,8 +66,8 @@
       <el-table-column prop="testname" label="名称"></el-table-column>
       <el-table-column prop="function" label="函数名"></el-table-column>
       <el-table-column prop="module" label="所属模块"></el-table-column>
-      <el-table-column prop="creator" label="创建人"></el-table-column>
-      <el-table-column prop="status" label="状态">
+      <el-table-column prop="creator" label="创建人" width="120"></el-table-column>
+      <el-table-column prop="status" label="状态" width="120">
         <template #default="scope">
           <i class="status el-icon-success" v-if="scope.row.status==='success'" title="成功"></i>
           <i class="status el-icon-error" v-if="scope.row.status==='error'" title="错误"></i>
@@ -50,21 +79,17 @@
           ></i> -->
         </template>
       </el-table-column>
-      <el-table-column prop="execute_time" label="执行时间"></el-table-column>
-      <el-table-column prop="elapse_time" label="耗时"></el-table-column>
+      <el-table-column prop="execute_time" label="执行时间" width="200"></el-table-column>
+      <el-table-column prop="elapse_time" label="耗时" width="120"></el-table-column>
       <el-table-column prop="operate" label="操作" width="150">
         <template #default="scope">
-          <el-button size="mini" @click="handleDetail(scope.$index, scope.row)"
-            >查看</el-button>
+          <el-button size="mini" @click="handleDetail(scope.$index, scope.row)" icon="el-icon-s-order" class="icon" circle></el-button>
           <el-popconfirm
             :title="'确定删除用例【'+scope.row.testname+'】吗？'"
             @confirm="handleDelete(scope.$index, scope.row)"
           >
-          <template #reference>
-          <el-button
-            size="mini"
-            type="danger"
-            >删除</el-button>
+            <template #reference>
+              <el-button size="mini" icon="el-icon-remove-outline" class="icon" circle></el-button>
             </template>
           </el-popconfirm>
         </template>
@@ -75,7 +100,7 @@
       @size-change="handleSizeChange"
       @current-change="handleCurrentChange"
       :current-page="currentPage"
-      :page-size="100"
+      :page-size="pageSize"
       layout="total, sizes, prev, pager, next, jumper"
       :total="total"
     >
@@ -115,6 +140,16 @@
       width="50%"
       >
       <el-form ref="tempTaskRef" :model="tempTaskForm" :rules="rules" label-width="80px">
+        <el-form-item label="Worker" prop="worker">
+          <el-select v-model="tempTaskForm.worker" placeholder="Worker" style="width: 100%">
+            <el-option
+              v-for="item in optionsWorker"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value">
+            </el-option>
+          </el-select>
+        </el-form-item>
         <el-form-item label="描述" prop="description">
           <el-input type="textarea" v-model="tempTaskForm.description"></el-input>
         </el-form-item>
@@ -133,9 +168,10 @@ import { ElMessage } from 'element-plus'
 export default {
   data () {
     return {
-      search: '',
+      testname: '',
       currentPage: 1,
-      total: 256,
+      pageSize: 20,
+      total: 0,
       multipleSelection: [],
       tableData: [],
       dialogVisible: false,
@@ -147,7 +183,8 @@ export default {
         description: ''
       },
       tempTaskForm: {
-        description: ''
+        description: '',
+        worker: null
       },
       rules: {
         testname: [
@@ -159,11 +196,35 @@ export default {
         function: [
           { required: true, message: '请输入用例的函数名', trigger: 'blur' }
         ]
-      }
+      },
+      optionsModules: [],
+      optionsCreator: [],
+      optionsWorker: [],
+      optionsStatus: [{
+        value: 'success',
+        label: '成功'
+      }, {
+        value: 'fail',
+        label: '失败'
+      }, {
+        value: 'error',
+        label: '错误'
+      }, {
+        value: 'running',
+        label: '执行中'
+      }, {
+        value: 'pending',
+        label: '等待执行'
+      }],
+      modules: [],
+      creator: [],
+      status: []
     }
   },
   created () {
     this.getExampleList()
+    this.getOptions()
+    this.getWorkerList()
   },
   setup () {
     return {
@@ -185,10 +246,32 @@ export default {
   },
   methods: {
     async getExampleList () {
-      const { data: res } = await this.$axios.get('/example/list')
+      const { data: res } = await this.$axios.get('/example/list',
+        { params: { testname: this.testname, modules: this.modules.join(','), creator: this.creator.join(','), status: this.status.join(','), pageSize: this.pageSize, page: this.currentPage } })
+      // { params: { name: this.name, modules: this.modules.join(','), creator: this.creator.join(','), status: this.status.join(',') } })
       if (!res.success) return this.$message.error(res.errCode)
-      this.tableData = res.data
-      console.log(res.data)
+      this.tableData = res.data.datas
+      this.total = res.data.total
+    },
+    async getOptions () {
+      const { data: res } = await this.$axios.get('/example/options')
+      if (!res.success) return this.$message.error(res.errCode)
+      this.optionsModules = []
+      this.optionsCreator = []
+      res.data.module.forEach(item => {
+        this.optionsModules.push({ value: item, label: item })
+      })
+      res.data.creator.forEach(item => {
+        this.optionsCreator.push({ value: item, label: item })
+      })
+    },
+    async getWorkerList () {
+      const { data: res } = await this.$axios.get('/system/worker/list', { params: { status: true } })
+      if (!res.success) return this.$message.error(res.errCode)
+      res.data.forEach(item => {
+        this.optionsWorker.push({ value: item.id, label: item.name + '  [' + item.ip + ':' + item.port + ']' })
+      })
+      console.log(this.optionsWorker)
     },
     addExample () {
       this.$refs.addExampleRef.validate(async valid => {
@@ -206,7 +289,7 @@ export default {
         content.push(item.id)
       })
       console.log(content)
-      const { data: res } = await this.$axios.post('/task/execTemplateTask', { taskname: null, description: this.tempTaskForm.description, creator: '阿斯蒂芬', content: content })
+      const { data: res } = await this.$axios.post('/task/execTemplateTask', { taskname: null, description: this.tempTaskForm.description, creator: '邵俊凯', worker: this.tempTaskForm.worker, content: content })
       if (!res.success) return this.$message.error(res.errCode)
       this.success('创建临时任务成功')
       this.$refs.multipleTable.clearSelection()
@@ -229,8 +312,12 @@ export default {
     },
     handleSizeChange (val) {
       console.log(`每页 ${val} 条`)
+      this.pageSize = val
+      this.getExampleList()
     },
     handleCurrentChange (val) {
+      this.currentPage = val
+      this.getExampleList()
       console.log(`当前页: ${val}`)
     },
     toggleSelection (row, column, event) {
@@ -264,5 +351,8 @@ export default {
 }
 .el-icon-error {
   color: #f56c6c;
+}
+.icon {
+  font-size: 14px;
 }
 </style>

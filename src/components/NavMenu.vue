@@ -12,26 +12,30 @@
       index="/dashboard"
       :class="selectId == '/dashboard' ? 'select' : ''"
     >
-      <i class="el-icon-menu"></i>
-      <template #title>控制台</template>
+      <el-tooltip class="item" effect="dark" content="控制台" placement="right">
+        <i class="el-icon-menu"></i>
+      </el-tooltip>
     </el-menu-item>
     <el-menu-item
       index="/example"
       :class="selectId == '/example' ? 'select' : ''"
     >
-      <i class="el-icon-document"></i>
-      <template #title>用例</template>
+      <el-tooltip class="item" effect="dark" content="用例" placement="right">
+        <i class="el-icon-document"></i>
+      </el-tooltip>
     </el-menu-item>
     <el-menu-item index="/task" :class="selectId == '/task' ? 'select' : ''">
-      <i class="el-icon-odometer"></i>
-      <template #title>任务</template>
+      <el-tooltip class="item" effect="dark" content="任务" placement="right">
+        <i class="el-icon-odometer"></i>
+      </el-tooltip>
     </el-menu-item>
     <el-menu-item
-      index="/setting"
-      :class="selectId == '/setting' ? 'select' : ''"
+      index="/system"
+      :class="selectId == '/system' ? 'select' : ''"
     >
-      <i class="el-icon-setting"></i>
-      <template #title>设置</template>
+      <el-tooltip class="item" effect="dark" content="系统" placement="right">
+        <i class="el-icon-setting"></i>
+      </el-tooltip>
     </el-menu-item>
   </el-menu>
 </template>
@@ -56,6 +60,19 @@ export default {
 
 <style scoped>
 .select {
-  border-left: 5px solid #337eed;
+  position: relative;
+}
+.select::after{
+  position: absolute;
+  height: 100%;
+  width: 10px;
+  left: -4px;
+  background-color: #337eed;
+  content: " ";
+  border-radius: 0 50% 50% 0;
+}
+.icon {
+  width: 30px;
+  height: 30px;
 }
 </style>

@@ -6,23 +6,25 @@
     </el-breadcrumb>
     <!-- 查询框 -->
     <el-row :gutter="10">
-      <el-col :span="12">
+      <el-col :span="6">
         <el-input
           placeholder="请输入内容"
           v-model="search"
           class="input-with-select"
           clearable
+          size="mini"
         >
-          <template #append>
-            <el-button icon="el-icon-search"></el-button>
-          </template>
         </el-input>
       </el-col>
       <el-col :span="12">
-        <el-button type="primary" @click="dialogVisible=true">新建任务</el-button>
-        <el-button type="warning" :disabled="multipleSelection.length<=0" @click="tempTaskDialogVisible=true">执行任务</el-button>
-        <el-button type="danger" :disabled="multipleSelection.length<=0" @click="tempTaskDialogVisible=true">删除任务</el-button>
-        <el-button @click="dialogVisible=true">导入任务</el-button>
+        <el-button type="primary" size="mini" @click="dialogVisible=true">新建任务</el-button>
+        <el-button type="warning" size="mini" :disabled="multipleSelection.length<=0" @click="tempTaskDialogVisible=true">执行任务</el-button>
+        <el-popconfirm :title="'确定删除所有选中任务吗？'">
+          <template #reference>
+            <el-button type="danger" size="mini" :disabled="multipleSelection.length<=0">删除任务</el-button>
+          </template>
+        </el-popconfirm>
+        <el-button size="mini" @click="dialogVisible=true">导入任务</el-button>
       </el-col>
     </el-row>
     <!-- 用例内容表格展示 -->
@@ -44,15 +46,20 @@
       <el-table-column prop="elapse_time" label="耗时">14min</el-table-column>
       <el-table-column prop="operate" label="操作" width="250">
         <template #default="scope">
-          <el-popconfirm :title="'是否执行任务【'+scope.row.taskname+'】吗？'" @confirm="handleExecute(scope.$index, scope.row)">
+          <el-button size="mini" @click="handleDetail(scope.$index, scope.row)" icon="el-icon-s-order" class="icon" circle></el-button>
+          <el-popconfirm :title="'是否执行任务【'+scope.row.taskname+'】吗？'" @confirm="handleTrigger(scope.$index, scope.row)">
             <template #reference>
-              <el-button size="mini" type="success">执行</el-button>
+              <el-button size="mini" icon="el-icon-s-promotion" class="icon" circle></el-button>
             </template>
           </el-popconfirm>
-          <el-button size="mini" @click="handleDetail(scope.$index, scope.row)">查看</el-button>
+          <el-popconfirm :title="'开启定时任务【'+scope.row.taskname+'】吗？'" @confirm="handleSwitch(scope.$index, scope.row)">
+            <template #reference>
+              <el-button icon="el-icon-video-play" size="mini" class="icon" circle></el-button>
+            </template>
+          </el-popconfirm>
           <el-popconfirm :title="'确定删除任务【'+scope.row.taskname+'】吗？'" @confirm="handleDelete(scope.$index, scope.row)">
             <template #reference>
-              <el-button size="mini" type="danger">删除</el-button>
+              <el-button size="mini" icon="el-icon-remove-outline" class="icon" circle></el-button>
             </template>
           </el-popconfirm>
         </template>
@@ -104,7 +111,7 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="tempTaskDialogVisible = false">取 消</el-button>
-          <el-button type="primary" @click="execTempTask">确 定</el-button>
+          <el-button type="primary" @click="triggerTempTask">确 定</el-button>
         </span>
       </template>
     </el-dialog>
@@ -176,13 +183,13 @@ export default {
         this.dialogVisible = false
       })
     },
-    async execTempTask () {
+    async triggerTempTask () {
       var content = []
       this.multipleSelection.forEach(item => {
         content.push(item.id)
       })
       console.log(content)
-      const { data: res } = await this.$axios.post('/task/execTemplateTask', { taskname: null, description: this.tempTaskForm.description, creator: '阿斯蒂芬', content: content })
+      const { data: res } = await this.$axios.post('/task/trigger', { taskname: null, description: this.tempTaskForm.description, creator: '阿斯蒂芬', content: content })
       if (!res.success) return this.$message.error(res.errCode)
       this.success('创建临时任务成功')
       this.$refs.multipleTable.clearSelection()
@@ -197,8 +204,13 @@ export default {
       console.log(row)
       this.$router.push('/task/' + row.id)
     },
-    async handleExecute (index, row) {
-      const { data: res } = await this.$axios.post('/task/execute/' + row.id)
+    async handleSwitch (index, row) {
+      const { data: res } = await this.$axios.post('/task/trigger/' + row.id)
+      if (!res.success) return this.$message.error(res.errCode)
+      this.success('开始执行任务【' + row.taskname + '】')
+    },
+    async handleTrigger (index, row) {
+      const { data: res } = await this.$axios.post('/task/switch/' + row.id)
       if (!res.success) return this.$message.error(res.errCode)
       this.success('开始执行任务【' + row.taskname + '】')
     },
@@ -245,5 +257,8 @@ export default {
 }
 .el-icon-error {
   color: #f56c6c;
+}
+.icon {
+  font-size: 14px;
 }
 </style>

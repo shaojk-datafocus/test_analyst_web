@@ -8,7 +8,7 @@
     <!-- 页面主体 -->
     <el-container>
       <!-- 侧边栏 -->
-      <el-aside width="120px">
+      <el-aside width="60px">
         <NavMenu></NavMenu>
       </el-aside>
       <!-- 页面内容 -->

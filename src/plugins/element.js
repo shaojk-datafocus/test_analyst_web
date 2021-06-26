@@ -24,7 +24,10 @@ import {
   ElDialog,
   ElForm,
   ElFormItem,
-  ElPopconfirm
+  ElPopconfirm,
+  ElSelect,
+  ElOption,
+  ElTooltip
 } from 'element-plus'
 import lang from 'element-plus/lib/locale/lang/zh-cn'
 import locale from 'element-plus/lib/locale'
@@ -57,4 +60,7 @@ export default app => {
   app.use(ElForm)
   app.use(ElFormItem)
   app.use(ElPopconfirm)
+  app.use(ElSelect)
+  app.use(ElOption)
+  app.use(ElTooltip)
 }

@@ -12,14 +12,33 @@
                 <el-form-item label="任务名称" prop="taskname" >
                     <el-input v-model="taskForm.taskname" placeholder="请输入用例名称"></el-input>
                 </el-form-item>
-                <el-form-item label="创建者" prop="creator">
-                    <el-input v-model="taskForm.creator" placeholder=""></el-input>
+                <el-row :gutter="20">
+                  <el-col :span="12">
+                    <el-form-item label="创建者" prop="creator">
+                        <el-input v-model="taskForm.creator" placeholder=""></el-input>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="12">
+                    <el-form-item label="Worker" prop="worker_id">
+                      <el-select v-model="taskForm.worker_id" placeholder="Worker" filterable clearable style="width: 100%">
+                        <el-option
+                          v-for="item in optionsWorker"
+                          :key="item.value"
+                          :label="item.label"
+                          :value="item.value">
+                        </el-option>
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+                <el-form-item label="执行计划" prop="schedule">
+                    <el-input type="textarea" v-model="taskForm.schedule" :autosize="{ minRows: 5}" placeholder='例：{"day_of_week":"0-6", "hour":18, "minute":20, "second":10}'></el-input>
                 </el-form-item>
                 <el-form-item label="描述" prop="description">
-                    <el-input type="textarea" v-model="taskForm.description" :autosize="{ minRows: 6}"></el-input>
+                    <el-input type="textarea" v-model="taskForm.description" :autosize="{ minRows: 3}"></el-input>
                 </el-form-item>
-                <el-form-item label="描述" prop="content">
-                    <el-input type="textarea" v-model="taskForm.description" :autosize="{ minRows: 6}"></el-input>
+                <el-form-item label="内容" prop="content">
+                    <el-input type="textarea" v-model="taskForm.content" :autosize="{ minRows: 3}"></el-input>
                 </el-form-item>
                 <el-form-item>
                     <el-button type="primary" ref="saveTask" @click="saveTask" :disabled="!editable">保存配置</el-button>
@@ -107,13 +126,13 @@ export default {
           { required: true, message: '请输入用例的函数名', trigger: 'blur' }
         ]
       },
-      recordData: []
+      recordData: [],
+      optionsWorker: []
     }
   },
   created () {
     this.getTaskDetail(this.$route.params.id)
-    console.log(this.$route.params.id)
-    console.log('到了?')
+    this.getWorkerList()
   },
   setup () {
     return {
@@ -173,14 +192,7 @@ export default {
       console.log(this.recordData)
     },
     async saveTask () {
-      const { data: res } = await this.$axios.post('/task/update', {
-        id: this.taskForm.id,
-        taskname: this.taskForm.taskname,
-        module: this.taskForm.module,
-        function: this.taskForm.function,
-        creator: this.taskForm.creator,
-        description: this.taskForm.description
-      })
+      const { data: res } = await this.$axios.post('/task/update', this.taskForm)
       if (!res.success) return this.$message.error(res.errCode)
       this.success('保存用例成功')
       this.$router.push('/task')
@@ -190,6 +202,14 @@ export default {
       if (!res.success) return this.error(res.errCode)
       this.success('删除用例成功')
       this.$router.push('/task')
+    },
+    async getWorkerList () {
+      const { data: res } = await this.$axios.get('/system/worker/list', { params: { status: true } })
+      if (!res.success) return this.$message.error(res.errCode)
+      res.data.forEach(item => {
+        this.optionsWorker.push({ value: item.id, label: item.name + '  [' + item.ip + ':' + item.port + ']' })
+      })
+      console.log(this.optionsWorker)
     }
   }
 }
