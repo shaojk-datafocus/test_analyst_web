@@ -40,60 +40,69 @@
         </el-col>
         <!-- 用例执行记录 -->
         <el-col :span="13">
-          <el-table
-            :data="recordData"
-            style="width: 100%">
-            <el-table-column type="expand">
-              <template #default="props">
-                <el-form label-position="left" inline class="demo-table-expand">
-                  <el-form-item label="ID">
-                    <span>{{ props.row.id }}</span>
-                  </el-form-item>
-                  <el-form-item label="执行状态">
-                    <span>{{ props.row.status }}</span>
-                  </el-form-item>
-                  <el-form-item label="用时">
-                    <span>{{ props.row.elapse_time }}</span>
-                  </el-form-item>
-                  <el-form-item label="所属任务 ID">
-                    <span>{{ props.row.task_id }}</span>
-                  </el-form-item>
-                  <el-form-item label="起始时间">
-                    <span>{{ props.row.start_time }}</span>
-                  </el-form-item>
-                  <el-form-item label="结束时间">
-                    <span>{{ props.row.end_time }}</span>
-                  </el-form-item>
-                  <!-- <div v-if="props.row.info"> -->
-                    <div><strong>命令行信息</strong></div>
-                    <!-- <p v-for="(row, i) in props.row.info.location" :key="i">
-                      {{ row }}
-                    </p> -->
-                    <el-input readonly
-                      type="textarea"
-                      :autosize="{ minRows: 2, maxRows: 20}"
-                      v-model="props.row.info">
-                    </el-input>
-                </el-form>
-              </template>
-            </el-table-column>
-            <el-table-column
-              label="执行 ID"
-              prop="id">
-            </el-table-column>
-            <el-table-column
-              label="执行状态"
-              prop="status">
-            </el-table-column>
-            <el-table-column
-              label="用时"
-              prop="elapse_time">
-            </el-table-column>
-            <el-table-column
-              label="执行时间"
-              prop="start_time">
-            </el-table-column>
-          </el-table>
+          <el-row>
+            <el-table
+              :data="recordData"
+              style="width: 100%"
+              height="500"
+              >
+              <el-table-column type="expand">
+                <template #default="props">
+                  <el-form label-position="left" inline class="demo-table-expand">
+                    <el-form-item label="ID">
+                      <span>{{ props.row.id }}</span>
+                    </el-form-item>
+                    <el-form-item label="执行状态">
+                      <span>{{ props.row.status }}</span>
+                    </el-form-item>
+                    <el-form-item label="用时">
+                      <span>{{ props.row.elapse_time }}</span>
+                    </el-form-item>
+                    <el-form-item label="所属任务 ID">
+                      <span>{{ props.row.task_id }}</span>
+                    </el-form-item>
+                    <el-form-item label="起始时间">
+                      <span>{{ props.row.start_time }}</span>
+                    </el-form-item>
+                    <el-form-item label="结束时间">
+                      <span>{{ props.row.end_time }}</span>
+                    </el-form-item>
+                      <div><strong>命令行信息</strong></div>
+                      <el-input readonly
+                        type="textarea"
+                        :autosize="{ minRows: 2, maxRows: 20}"
+                        v-model="props.row.info">
+                      </el-input>
+                  </el-form>
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="执行时间"
+                prop="start_time"
+                min-width="150">
+              </el-table-column>
+              <el-table-column
+                label="执行状态"
+                prop="status">
+              </el-table-column>
+              <el-table-column
+                label="执行站点"
+                prop="host"
+                min-width="150">
+              </el-table-column>
+              <el-table-column
+                label="分支"
+                prop="branch">
+              </el-table-column>
+              <el-table-column
+                label="用时"
+                prop="elapse_time">
+              </el-table-column>
+            </el-table>
+            </el-row>
+            <el-row>
+              <div id="recordChart" style="width: 100%; height: 450px"></div>
+            </el-row>
         </el-col>
     </el-row>
   </div>
@@ -145,16 +154,17 @@ export default {
   },
   methods: {
     async getExampleDetail (id) {
-      const { data: res } = await this.$axios.get('/example/' + id)
+      const { data: res } = await this.$axios.get('/api/example/' + id)
       if (!res.success) return this.$message.error(res.errCode)
       this.testForm = res.data
       this.editable = true
       console.log(this.testForm)
     },
     async getExampleRecord (id) {
-      const { data: res } = await this.$axios.get('/example/' + id + '/record')
+      const { data: res } = await this.$axios.get('/api/example/' + id + '/record')
       if (!res.success) return this.$message.error(res.errCode)
       this.recordData = []
+      this.drawRecord(res.data)
       res.data.forEach((record) => {
         let info
         if (record.info) {
@@ -178,12 +188,14 @@ export default {
           elapseTime += parseInt(et % 60) + 's'
         }
         record.elapse_time = elapseTime
+        record.branch = 'release'
+        record.host = '192.168.0.151:31600'
         this.recordData.push(record)
       })
       console.log(this.recordData)
     },
     async saveExample () {
-      const { data: res } = await this.$axios.post('/example/update', {
+      const { data: res } = await this.$axios.post('/api/example/update', {
         id: this.testForm.id,
         testname: this.testForm.testname,
         module: this.testForm.module,
@@ -196,10 +208,83 @@ export default {
       this.$router.push('/example')
     },
     async deleteExample () {
-      const { data: res } = await this.$axios.post('/example/delete/' + this.testForm.id)
+      const { data: res } = await this.$axios.post('/api/example/delete/' + this.testForm.id)
       if (!res.success) return this.error(res.errCode)
       this.success('删除用例成功')
       this.$router.push('/example')
+    },
+    drawRecord (data) {
+      console.log('这里')
+      const container = document.getElementById('recordChart')
+      container.removeAttribute('_echarts_instance_')
+      const recordChart = this.$echarts.init(container)
+      const option = {
+        tooltip: {
+          position: 'top'
+        },
+        title: [],
+        singleAxis: [],
+        series: []
+      }
+      const branchs = {}
+      data.forEach(record => {
+        if (!(record.branch in branchs)) {
+          branchs[record.branch] = { axis: [record.start_time], data: {} }
+          branchs[record.branch].data[record.status] = [[record.start_time, record.elapse_time]]
+        } else {
+          branchs[record.branch].axis.unshift(record.start_time)
+          if (branchs[record.branch].data[record.status]) {
+            branchs[record.branch].data[record.status].unshift([record.start_time, record.elapse_time])
+          } else {
+            branchs[record.branch].data[record.status] = [[record.start_time, record.elapse_time]]
+          }
+        }
+      })
+      const nAxis = Object.keys(branchs).length
+      const height = 30
+      const dataNum = data.length
+      const colorMap = {
+        success: 'rgba(103, 194, 58, 0.8)',
+        running: 'rgba(64, 158, 255, 0.8)',
+        pending: 'rgba(144, 147, 153, 0.8)',
+        error: 'rgba(230, 162, 60, 0.9)',
+        failed: 'rgba(245, 108, 108, 0.9)'
+      }
+      Object.keys(branchs).forEach((b, index) => {
+        option.title.push({
+          text: b,
+          textBaseline: 'middle',
+          top: (index + 0.5) * height / nAxis + '%'
+        })
+        option.singleAxis.push({
+          left: 150,
+          right: 150,
+          type: 'time',
+          nameGap: 1,
+          boundaryGap: true,
+          splitNumber: 1,
+          data: branchs[b].axis,
+          top: (index * height / nAxis + 5) + '%',
+          height: (height / nAxis - 10) + '%',
+          axisLabel: { interval: 2 }
+        })
+        for (const status in branchs[b].data) {
+          option.series.push({
+            singleAxisIndex: index,
+            coordinateSystem: 'singleAxis',
+            type: 'scatter',
+            data: branchs[b].data[status],
+            symbolSize: function (dataItem) {
+              return Math.sqrt(dataItem[1] / dataNum) * 5 + 1
+            },
+            color: colorMap[status]
+          })
+        }
+      })
+      recordChart.setOption(option)
+      window.onresize = function () { // 自适应大小
+        recordChart.resize()
+      }
     }
   }
 }

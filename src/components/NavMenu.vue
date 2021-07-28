@@ -29,6 +29,11 @@
         <i class="el-icon-odometer"></i>
       </el-tooltip>
     </el-menu-item>
+    <el-menu-item index="/strategy" :class="selectId == '/strategy' ? 'select' : ''">
+      <el-tooltip class="item" effect="dark" content="策略" placement="right">
+        <i class="el-icon-data-analysis"></i>
+      </el-tooltip>
+    </el-menu-item>
     <el-menu-item
       index="/system"
       :class="selectId == '/system' ? 'select' : ''"
@@ -44,15 +49,18 @@
 export default {
   data () {
     return {
-      selectId: '/dashboard'
+      selectId: ''
     }
   },
   created () {
-    this.selectId = '/dashboard'
+    console.log(this.$route)
+
+    this.selectId = sessionStorage.getItem('NavSelectId')
   },
   methods: {
     handleSelect (index, indexPath) {
       this.selectId = index
+      sessionStorage.setItem('NavSelectId', index)
     }
   }
 }

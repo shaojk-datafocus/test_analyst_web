@@ -47,9 +47,14 @@
           </el-option>
         </el-select>
       </el-col>
-      <el-col :span="3">
-        <el-button type="primary" @click="dialogVisible=true" size='mini'>新增用例</el-button>
-        <el-button type="warning" :disabled="multipleSelection.length<=0" @click="tempTaskDialogVisible=true" size='mini'>执行临时任务</el-button>
+      <el-col :span="6">
+        <el-button type="primary" :disabled="multipleSelection.length<=0" @click="taskDialogVisible=true" size='mini'>创建任务</el-button>
+        <el-button @click="dialogVisible=true" size='mini'>新增用例</el-button>
+        <el-popconfirm :title="'确定删除所有选中用例吗？'" @confirm="deleteTestByBatch">
+          <template #reference>
+            <el-button type="danger" size="mini" :disabled="multipleSelection.length<=0">删除用例</el-button>
+          </template>
+        </el-popconfirm>
       </el-col>
     </el-row>
     <!-- 用例内容表格展示 -->
@@ -58,29 +63,28 @@
       :data="tableData"
       tooltip-effect="dark"
       style="width: 100%"
+      height="700"
       @selection-change="handleSelectionChange"
-      @row-dblclick="toggleSelection"
+      @row-click="toggleSelection"
+      @row-dblclick="toggleDblClick"
       size="mini"
     >
       <el-table-column type="selection" width="36"></el-table-column>
-      <el-table-column prop="testname" label="名称"></el-table-column>
-      <el-table-column prop="function" label="函数名"></el-table-column>
-      <el-table-column prop="module" label="所属模块"></el-table-column>
-      <el-table-column prop="creator" label="创建人" width="120"></el-table-column>
-      <el-table-column prop="status" label="状态" width="120">
+      <el-table-column prop="testname" label="名称" sortable></el-table-column>
+      <el-table-column prop="function" label="函数名" sortable></el-table-column>
+      <el-table-column prop="module" label="所属模块" sortable></el-table-column>
+      <el-table-column prop="creator" label="创建人" sortable width="120"></el-table-column>
+      <el-table-column prop="status" label="状态" sortable width="120">
         <template #default="scope">
           <i class="status el-icon-success" v-if="scope.row.status==='success'" title="成功"></i>
-          <i class="status el-icon-error" v-if="scope.row.status==='error'" title="错误"></i>
-          <i class="status el-icon-error" v-if="scope.row.status==='fail'" title="失败"></i>
+          <i class="status el-icon-warning" v-if="scope.row.status==='error'" title="错误"></i>
+          <i class="status el-icon-error" v-if="scope.row.status==='failed'" title="失败"></i>
           <i class="status el-icon-loading" v-if="scope.row.status==='running'" title="执行中"></i>
-          <i class="status el-icon-loading" v-if="scope.row.status==='pending'" title="等待执行"></i>
-          <!-- <i
-            :class="'status el-icon-' + (scope.row.status ? 'success' : 'error')"
-          ></i> -->
+          <i class="status el-icon-more" v-if="scope.row.status==='pending'" title="等待执行"></i>
         </template>
       </el-table-column>
-      <el-table-column prop="execute_time" label="执行时间" width="200"></el-table-column>
-      <el-table-column prop="elapse_time" label="耗时" width="120"></el-table-column>
+      <el-table-column prop="execute_time" label="执行时间" sortable width="200"></el-table-column>
+      <el-table-column prop="elapse_time" label="耗时" sortable width="120"></el-table-column>
       <el-table-column prop="operate" label="操作" width="150">
         <template #default="scope">
           <el-button size="mini" @click="handleDetail(scope.$index, scope.row)" icon="el-icon-s-order" class="icon" circle></el-button>
@@ -89,7 +93,7 @@
             @confirm="handleDelete(scope.$index, scope.row)"
           >
             <template #reference>
-              <el-button size="mini" icon="el-icon-remove-outline" class="icon" circle></el-button>
+              <el-button size="mini" icon="el-icon-circle-close" class="icon" circle></el-button>
             </template>
           </el-popconfirm>
         </template>
@@ -99,7 +103,7 @@
     <el-pagination
       @size-change="handleSizeChange"
       @current-change="handleCurrentChange"
-      :current-page="currentPage"
+      :current-page="page"
       :page-size="pageSize"
       layout="total, sizes, prev, pager, next, jumper"
       :total="total"
@@ -135,29 +139,87 @@
     </el-dialog>
     <!-- 执行临时任务弹框 -->
     <el-dialog
-      title="是否确定执行临时任务？"
-      v-model="tempTaskDialogVisible"
+      title="创建任务"
+      v-model="taskDialogVisible"
       width="50%"
+      @open="initTaskDialog"
       >
-      <el-form ref="tempTaskRef" :model="tempTaskForm" :rules="rules" label-width="80px">
-        <el-form-item label="Worker" prop="worker">
-          <el-select v-model="tempTaskForm.worker" placeholder="Worker" style="width: 100%">
-            <el-option
-              v-for="item in optionsWorker"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value">
-            </el-option>
-          </el-select>
+      <el-form ref="taskRef" :model="taskForm" :rules="taskRules" label-width="80px">
+        <el-form-item label="名称" prop="description">
+          <el-input v-model="taskForm.taskname"></el-input>
         </el-form-item>
+        <el-row :gutter="10">
+          <el-col :span="12">
+            <el-form-item label="站点" prop="host">
+              <el-input v-model="taskForm.host"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="Worker" prop="worker_id">
+              <el-select v-model="taskForm.worker_id" placeholder="Worker" style="width: 100%">
+                <el-option
+                  v-for="item in optionsWorker"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value">
+                </el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-form-item label="描述" prop="description">
-          <el-input type="textarea" v-model="tempTaskForm.description"></el-input>
+          <el-input type="textarea" v-model="taskForm.description" :autosize="{minRows: 1, maxRows: 6}"></el-input>
+        </el-form-item>
+        <el-form-item label="定时任务" prop="schedule">
+          <el-input type="textarea" v-model="taskForm.schedule" :autosize="{minRows: 1, maxRows: 6}"></el-input>
+        </el-form-item>
+        <el-form-item label="SQL策略" prop="sql_strategy">
+          <el-input type="textarea" v-model="taskForm.sql_strategy" :autosize="{minRows: 1, maxRows: 6}"></el-input>
+        </el-form-item>
+        <el-form-item label="用例列表" prop="content">
+           <el-table
+              :data="taskForm.content"
+              style="width: 100%"
+              max-height="350"
+              size="mini">
+              <el-table-column
+                fixed
+                prop="testname"
+                label="名称"
+                width="150">
+              </el-table-column>
+              <el-table-column
+                prop="function"
+                label="函数名">
+              </el-table-column>
+              <el-table-column
+                prop="module"
+                label="模块">
+              </el-table-column>
+              <el-table-column
+                prop="creator"
+                label="创建者">
+              </el-table-column>
+              <el-table-column
+                fixed="right"
+                label="操作">
+                <template #default="scope">
+                  <el-button
+                    @click.prevent="deleteRow(scope.$index, taskForm.content)"
+                    type="text"
+                    size="small">
+                    移除
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
         </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="tempTaskDialogVisible = false">取 消</el-button>
-          <el-button type="primary" @click="execTempTask">确 定</el-button>
+          <el-button @click="taskDialogVisible = false">取 消</el-button>
+          <el-button type="primary" @click="addTask">保 存</el-button>
+          <el-button type="warning" @click="addTaskAndExecute">保 存 并 执 行</el-button>
         </span>
       </template>
     </el-dialog>
@@ -169,22 +231,21 @@ export default {
   data () {
     return {
       testname: '',
-      currentPage: 1,
+      page: 1,
       pageSize: 20,
       total: 0,
       multipleSelection: [],
       tableData: [],
       dialogVisible: false,
-      tempTaskDialogVisible: false,
+      taskDialogVisible: false,
       addExampleForm: {
         testname: '',
         module: '',
         function: '',
         description: ''
       },
-      tempTaskForm: {
-        description: '',
-        worker: null
+      taskForm: {
+        taskname: '临时任务'
       },
       rules: {
         testname: [
@@ -197,6 +258,14 @@ export default {
           { required: true, message: '请输入用例的函数名', trigger: 'blur' }
         ]
       },
+      taskRules: {
+        taskname: [
+          { required: true, message: '请输入任务名称', trigger: 'blur' }
+        ],
+        content: [
+          { required: true, message: '用例不能为空', trigger: 'blur' }
+        ]
+      },
       optionsModules: [],
       optionsCreator: [],
       optionsWorker: [],
@@ -204,7 +273,7 @@ export default {
         value: 'success',
         label: '成功'
       }, {
-        value: 'fail',
+        value: 'failed',
         label: '失败'
       }, {
         value: 'error',
@@ -246,15 +315,28 @@ export default {
   },
   methods: {
     async getExampleList () {
-      const { data: res } = await this.$axios.get('/example/list',
-        { params: { testname: this.testname, modules: this.modules.join(','), creator: this.creator.join(','), status: this.status.join(','), pageSize: this.pageSize, page: this.currentPage } })
-      // { params: { name: this.name, modules: this.modules.join(','), creator: this.creator.join(','), status: this.status.join(',') } })
+      const { data: res } = await this.$axios.get('/api/example/list',
+        { params: { testname: this.testname, modules: this.modules.join(','), creator: this.creator.join(','), status: this.status.join(','), pageSize: this.pageSize, page: this.page } })
       if (!res.success) return this.$message.error(res.errCode)
+      res.data.datas.forEach(item => {
+        let et = item.elapse_time
+        const second = parseInt(et % 60)
+        item.elapse_time = second + 's'
+        et = parseInt(et / 60)
+        if (et > 0) {
+          item.elapse_time = et + 'min'
+          if (second > 0) {
+            item.elapse_time += ' ' + second + 's'
+          }
+        } else {
+          item.elapse_time = second + 's'
+        }
+      })
       this.tableData = res.data.datas
       this.total = res.data.total
     },
     async getOptions () {
-      const { data: res } = await this.$axios.get('/example/options')
+      const { data: res } = await this.$axios.get('/api/example/options')
       if (!res.success) return this.$message.error(res.errCode)
       this.optionsModules = []
       this.optionsCreator = []
@@ -266,46 +348,67 @@ export default {
       })
     },
     async getWorkerList () {
-      const { data: res } = await this.$axios.get('/system/worker/list', { params: { status: true } })
+      const { data: res } = await this.$axios.get('/api/system/worker/list', { params: { status: true } })
       if (!res.success) return this.$message.error(res.errCode)
       res.data.forEach(item => {
-        this.optionsWorker.push({ value: item.id, label: item.name + '  [' + item.ip + ':' + item.port + ']' })
+        this.optionsWorker.push({ value: item.id, label: item.name + '  <' + item.ip + '  ' + item.branch + '>' })
       })
       console.log(this.optionsWorker)
     },
-    addExample () {
+    async addExample () {
       this.$refs.addExampleRef.validate(async valid => {
         console.log(valid)
         if (!valid) return
-        const { data: res } = await this.$axios.post('/example/add', this.addExampleForm)
+        const { data: res } = await this.$axios.post('/api/example/add', this.addExampleForm)
         if (!res.success) return this.$message.error(res.errCode)
         this.getExampleList()
         this.dialogVisible = false
       })
     },
-    async execTempTask () {
+    async addTask () {
+      const content = []
+      this.taskForm.content.forEach(item => {
+        content.push(item.id)
+      })
+      this.taskForm.content = content.join(',')
+      console.log(this.taskForm)
+      const { data: res } = await this.$axios.post('/api/task/add', this.taskForm)
+      if (!res.success) return this.$message.error(res.errCode)
+      this.success('创建任务成功')
+      this.$refs.multipleTable.clearSelection()
+      this.taskDialogVisible = false
+    },
+    async addTaskAndExecute () {
       var content = []
       this.multipleSelection.forEach(item => {
         content.push(item.id)
       })
       console.log(content)
-      const { data: res } = await this.$axios.post('/task/execTemplateTask', { taskname: null, description: this.tempTaskForm.description, creator: '邵俊凯', worker: this.tempTaskForm.worker, content: content })
+      const { data: res } = await this.$axios.post('/api/task/trigger', this.taskForm)
       if (!res.success) return this.$message.error(res.errCode)
-      this.success('创建临时任务成功')
+      this.success('创建任务成功')
       this.$refs.multipleTable.clearSelection()
-      this.tempTaskDialogVisible = false
+      this.taskDialogVisible = false
     },
     dialogClosed () {
       this.$refs.addExampleRef.resetFields() // 为什么resetFields无效?
       this.addExampleForm = {}
     },
+    initTaskDialog () {
+      this.taskForm.taskname = '临时任务-' + Date().toString().slice(0, -18)
+      this.taskForm.content = []
+      this.multipleSelection.forEach(item => {
+        this.taskForm.content.push(item)
+      })
+      console.log(this.taskForm.content)
+    },
     handleDetail (index, row) {
-      console.log(index)
-      console.log(row)
-      this.$router.push('/example/' + row.id)
+      // this.$router.push('/example/' + row.id)
+      const routeData = this.$router.resolve({ path: '/example/' + row.id })
+      window.open(routeData.href)
     },
     async handleDelete (index, row) {
-      const { data: res } = await this.$axios.post('/example/delete/' + row.id)
+      const { data: res } = await this.$axios.post('/api/example/delete/' + row.id)
       if (!res.success) return this.$message.error(res.errCode)
       this.success('删除测试用例【' + row.testname + '】')
       this.getExampleList()
@@ -316,22 +419,38 @@ export default {
       this.getExampleList()
     },
     handleCurrentChange (val) {
-      this.currentPage = val
+      this.page = val
       this.getExampleList()
       console.log(`当前页: ${val}`)
     },
+    deleteRow (index, rows) {
+      rows.splice(index, 1)
+    },
     toggleSelection (row, column, event) {
-      if (row) {
-        this.$refs.multipleTable.toggleRowSelection(row)
-      } else {
-        this.$refs.multipleTable.clearSelection()
+      if (column.no <= 1) {
+        if (row) {
+          this.$refs.multipleTable.toggleRowSelection(row)
+        } else {
+          this.$refs.multipleTable.clearSelection()
+        }
       }
     },
+    toggleDblClick (row, column, event) {
+      const routeData = this.$router.resolve({ path: '/example/' + row.id })
+      window.open(routeData.href)
+    },
     handleSelectionChange (val) {
-      console.log(val)
-      console.log(typeof val)
       this.multipleSelection = val
-      console.log(this.multipleSelection)
+    },
+    async deleteTestByBatch () {
+      const tests = []
+      this.multipleSelection.forEach(item => {
+        tests.push(item.id)
+      })
+      const { data: res } = await this.$axios.post('/api/example/delete', { tests: tests })
+      if (!res.success) return this.$message.error(res.errCode)
+      this.success('批量删除用例成功')
+      this.getTaskList()
     }
   }
 }
@@ -350,7 +469,14 @@ export default {
   color: #67c23a;
 }
 .el-icon-error {
+  /* color: #f56c6c; */
   color: #f56c6c;
+}
+.el-icon-warning {
+  color: #E6A23C;
+}
+.el-icon-more {
+  color: #909399;
 }
 .icon {
   font-size: 14px;
