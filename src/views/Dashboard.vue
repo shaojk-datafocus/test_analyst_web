@@ -69,16 +69,12 @@ export default {
       const colorMap = { success: '#67C23A', failed: '#f56c6c', error: '#E6A23C', pending: '#909399', running: '#409EFF', null: '#DDDDDD' }
       const label = {}
       data.forEach(item => {
-        console.log(item)
         label[item[0]] = item[1]
       })
-      console.log(label)
       for (const item of ['running', 'pending', 'success', 'failed', 'error', 'null']) {
-        console.log(item)
         option.series[0].data.push({ value: label[item], name: lableMap[item] })
         option.color.push(colorMap[item])
       }
-      console.log(option)
       chart.setOption(option)
       window.onresize = function () { // 自适应大小
         chart.resize()

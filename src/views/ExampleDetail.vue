@@ -58,8 +58,11 @@
                     <el-form-item label="用时">
                       <span>{{ props.row.elapse_time }}</span>
                     </el-form-item>
-                    <el-form-item label="所属任务 ID">
-                      <span>{{ props.row.task_id }}</span>
+                    <el-form-item label="所属任务">
+                      <a :href="'#/task/'+props.row.task_id">{{ props.row.task_name }}</a>
+                    </el-form-item>
+                    <el-form-item label="分支">
+                      <span>{{ props.row.branch }}</span>
                     </el-form-item>
                     <el-form-item label="起始时间">
                       <span>{{ props.row.start_time }}</span>
@@ -79,7 +82,7 @@
               <el-table-column
                 label="执行时间"
                 prop="start_time"
-                min-width="150">
+                min-width="100">
               </el-table-column>
               <el-table-column
                 label="执行状态"
@@ -88,11 +91,12 @@
               <el-table-column
                 label="执行站点"
                 prop="host"
-                min-width="150">
+                min-width="100">
               </el-table-column>
               <el-table-column
-                label="分支"
-                prop="branch">
+                label="任务"
+                prop="task" v-slot="scope" min-width="150">
+                <a :href="'#/task/'+scope.row.task_id">{{ scope.row.task_name }}</a>
               </el-table-column>
               <el-table-column
                 label="用时"
@@ -165,6 +169,7 @@ export default {
       if (!res.success) return this.$message.error(res.errCode)
       this.recordData = []
       this.drawRecord(res.data)
+      console.log(res.data)
       res.data.forEach((record) => {
         let info
         if (record.info) {
@@ -188,8 +193,6 @@ export default {
           elapseTime += parseInt(et % 60) + 's'
         }
         record.elapse_time = elapseTime
-        record.branch = 'release'
-        record.host = '192.168.0.151:31600'
         this.recordData.push(record)
       })
       console.log(this.recordData)
@@ -214,7 +217,6 @@ export default {
       this.$router.push('/example')
     },
     drawRecord (data) {
-      console.log('这里')
       const container = document.getElementById('recordChart')
       container.removeAttribute('_echarts_instance_')
       const recordChart = this.$echarts.init(container)

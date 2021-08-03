@@ -11,10 +11,10 @@
         <el-table-column prop="name" label="名称"></el-table-column>
         <el-table-column prop="ip" label="IP"></el-table-column>
         <el-table-column prop="port" label="端口" min-width="50"></el-table-column>
-        <el-table-column prop="branch" label="分支" min-width="200">
+        <el-table-column prop="branch_" label="分支" min-width="200">
           <template #default="scope">
             <ul>
-                <li v-for="(value, key, index) in scope.row.branch" :key="index"> {{key}} - {{value}}</li>
+                <li v-for="(value, key, index) in scope.row.branch_" :key="index"> {{key}} - {{value}}</li>
             </ul>
           </template>
         </el-table-column>
@@ -68,7 +68,16 @@
           <el-input v-model="workerForm.path"></el-input>
         </el-form-item>
         <el-form-item label="分支" prop="branch">
-          <el-input v-model="workerForm.branch"></el-input>
+          <div v-for="value,key,index in workerForm.branch_" :key="index" class="branch-item">
+            <span class="branch-name">{{key}}</span>
+            <el-input v-model="workerForm.branch_[key]"></el-input>
+            <el-button icon="el-icon-close" @click="removeBranch(key)"></el-button>
+          </div>
+          <div class="branch-item">
+            <el-input v-model="branchName" class="branch-name"></el-input>
+            <el-input v-model="folderPath"></el-input>
+            <el-button icon="el-icon-plus" @click="addBranch"></el-button>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -99,7 +108,9 @@ export default {
         port: [
           { required: true, message: '请输入Worker端口', trigger: 'blur' }
         ]
-      }
+      },
+      branchName: null,
+      folderPath: null
     }
   },
   created () {
@@ -129,11 +140,12 @@ export default {
       if (!res.success) return this.$message.error(res.errCode)
       this.workerData = res.data
       this.workerData.forEach(item => {
-        item.branch = JSON.parse(item.branch)
+        item.branch_ = JSON.parse(item.branch)
       })
-      console.log(this.workerData)
     },
     async addWorker () {
+      this.workerForm.branch = JSON.stringify(this.workerForm.branch_)
+      delete this.workerForm.branch_
       if (this.workerForm.id) { // 更新worker配置
         const { data: res } = await this.$axios.post('/api/system/worker/update', this.workerForm)
         if (!res.success) return this.$message.error(res.errCode)
@@ -153,6 +165,14 @@ export default {
       this.dialogTitle = '编辑Worker'
       this.workerForm = row
     },
+    addBranch () {
+      this.workerForm.branch_[this.branchName] = this.folderPath
+      this.branchName = null
+      this.folderPath = null
+    },
+    removeBranch (key) {
+      delete this.workerForm.branch_[key]
+    },
     async handleDelete (index, row) {
       const { data: res } = await this.$axios.post('/api/system/worker/delete/' + row.id)
       if (!res.success) return this.$message.error(res.errCode)
@@ -170,7 +190,6 @@ export default {
       this.workerForm = { port: 8378 }
     },
     async cleanHistory () {
-      console.log(this.deleteTime)
       const { data: res } = await this.$axios.post('/api/system/record/clean', { deleteTime: this.deleteTime })
       if (!res.success) return this.error(res.exception)
       this.success('成功删除历史记录')
@@ -195,5 +214,14 @@ export default {
   height: 14px;
   width: 14px;
   background-color: red;
+}
+.branch-item {
+  display: flex;
+  margin-bottom: 5px
+}
+.branch-name {
+ width: 30%;
+ font-size: 16px;
+
 }
 </style>

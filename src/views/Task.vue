@@ -42,6 +42,9 @@
       <el-table-column prop="taskname" label="名称" width="300" sortable></el-table-column>
       <el-table-column prop="description" label="描述" width="300"></el-table-column>
       <el-table-column prop="creator" label="创建人" sortable></el-table-column>
+      <el-table-column prop="worker_id" label="Worker" sortable v-slot="scope">
+        <el-tag type="info">{{ optionsWorker[scope.row.worker_id] }}</el-tag>
+      </el-table-column>
       <el-table-column prop="content" label="包含用例数量" sortable></el-table-column>
       <el-table-column prop="execute_time" label="最近执行时间" sortable></el-table-column>
       <el-table-column prop="elapse_time" label="耗时" sortable></el-table-column>
@@ -53,11 +56,6 @@
               <el-button size="mini" icon="el-icon-s-promotion" class="icon" circle></el-button>
             </template>
           </el-popconfirm>
-          <!-- <el-popconfirm :title="'开启定时任务【'+scope.row.taskname+'】吗？'" @confirm="handleSwitch(scope.$index, scope.row)">
-            <template #reference>
-              <el-button icon="el-icon-video-play" size="mini" class="icon" circle></el-button>
-            </template>
-          </el-popconfirm> -->
           <el-popconfirm :title="'确定删除任务【'+scope.row.taskname+'】吗？'" @confirm="handleDelete(scope.$index, scope.row)">
             <template #reference>
               <el-button size="mini" icon="el-icon-circle-close" class="icon" circle></el-button>
@@ -159,10 +157,12 @@ export default {
       filterMethod (query, item) {
         return item.spell.indexOf(query) > -1
       },
-      testData: []
+      testData: [],
+      optionsWorker: {}
     }
   },
   created () {
+    this.getWorkerList()
     this.getTaskList()
     this.getExampleList()
   },
@@ -282,11 +282,19 @@ export default {
       }
     },
     toggleDblClick (row, column, event) {
-      const routeData = this.$router.resolve({ path: '/task/' + row.id })
-      window.open(routeData.href)
+      window.open(this.$router.resolve({ path: '/task/' + row.id }).href)
     },
     handleSelectionChange (val) {
       this.multipleSelection = val
+    },
+    async getWorkerList () {
+      const { data: res } = await this.$axios.get('/api/system/worker/list', { params: { status: true } })
+      if (!res.success) return this.$message.error(res.errCode)
+      console.log(res.data)
+      res.data.forEach(item => {
+        this.optionsWorker[item.id] = item.name
+      })
+      console.log(this.optionsWorker)
     },
     async getExampleList () {
       const { data: res } = await this.$axios.get('/api/example/list?testname=&modules=&creator=&status=&pageSize=50&page=1')

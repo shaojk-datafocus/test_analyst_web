@@ -95,7 +95,7 @@
           <el-button type="primary" ref="saveTask" @click="saveTask" :disabled="!editable">保存配置</el-button>
           <el-popconfirm :title="'是否保存并立即执行任务【'+taskForm.taskname+'】？'" @confirm="handleTrigger">
             <template #reference>
-              <el-button type="warning">保存并执行</el-button>
+              <el-button type="warning" @click="saveTaskAndExecute">保存并执行</el-button>
             </template>
           </el-popconfirm>
           <el-button type="danger" @click="deleteTask" :disabled="!editable">删除</el-button>
@@ -178,9 +178,9 @@ export default {
       this.taskForm.content = content
       this.editable = true
       const options = this.$refs.optionsTaskRef.options
+      console.log(this.taskForm)
       this.nextTask = this.taskForm.next_task ? { id: this.taskForm.next_task, taskname: options.get(this.taskForm.next_task).currentLabel } : null
       this.lastTask = this.taskForm.last_task ? { id: this.taskForm.last_task, taskname: options.get(this.taskForm.last_task).currentLabel } : null
-      console.log(this.taskForm)
     },
     async saveTask () {
       this.taskForm.branch = this.taskForm.worker[1]
@@ -189,6 +189,13 @@ export default {
       if (!res.success) return this.$message.error(res.errCode)
       this.refreshNext()
       this.success('保存用例成功')
+    },
+    async saveTaskAndExecute () {
+      this.taskForm.branch = this.taskForm.worker[1]
+      this.taskForm.worker_id = this.taskForm.worker[0]
+      const { data: res } = await this.$axios.post('/api/task/trigger/' + this.taskForm.id)
+      if (!res.success) return this.error('执行任务失败【' + this.taskForm.taskname + '】')
+      this.success('开始执行任务【' + this.taskForm.taskname + '】')
     },
     async deleteTask () {
       const { data: res } = await this.$axios.post('/api/task/delete/' + this.taskForm.id)
@@ -219,11 +226,14 @@ export default {
         })
       })
     },
-    async getTaskList () {
-      const { data: res } = await this.$axios.get('/api/task/list?taskname=&pageSize=100&page=1')
-      if (!res.success) return this.$message.error(res.errCode)
-      res.data.datas.forEach(item => {
-        this.optionsTask.push({ value: item.id, label: item.taskname })
+    getTaskList () {
+      this.$axios.get('/api/task/list?taskname=&pageSize=100&page=1').then(res => {
+        if (!res.data.success) return this.$message.error(res.errCode)
+        res.data.data.datas.forEach(item => {
+          this.optionsTask.push({ value: item.id, label: item.taskname })
+        })
+      }).catch(err => {
+        console.log(err)
       })
     },
     refreshNext () {
