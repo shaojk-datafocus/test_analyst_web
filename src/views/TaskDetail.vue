@@ -93,11 +93,7 @@
         </el-row>
       <el-form-item>
           <el-button type="primary" ref="saveTask" @click="saveTask" :disabled="!editable">保存配置</el-button>
-          <el-popconfirm :title="'是否保存并立即执行任务【'+taskForm.taskname+'】？'" @confirm="handleTrigger">
-            <template #reference>
-              <el-button type="warning" @click="saveTaskAndExecute">保存并执行</el-button>
-            </template>
-          </el-popconfirm>
+          <el-button type="warning" @click="handlerExecute">执行任务</el-button>
           <el-button type="danger" @click="deleteTask" :disabled="!editable">删除</el-button>
       </el-form-item>
     </el-form>
@@ -190,7 +186,16 @@ export default {
       this.refreshNext()
       this.success('保存用例成功')
     },
-    async saveTaskAndExecute () {
+    handlerExecute () {
+      this.$confirm('执行任务前，请确定已保存任务?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.executeTask()
+      }).catch(() => {})
+    },
+    async executeTask () {
       this.taskForm.branch = this.taskForm.worker[1]
       this.taskForm.worker_id = this.taskForm.worker[0]
       const { data: res } = await this.$axios.post('/api/task/trigger/' + this.taskForm.id)
@@ -239,12 +244,6 @@ export default {
     refreshNext () {
       const ref = this.$refs.optionsTaskRef.selected
       this.nextTask = { id: ref.value, taskname: ref.currentLabel }
-    },
-    async handleTrigger () {
-      this.saveTask()
-      const { data: res } = await this.$axios.post('/api/task/trigger/' + this.taskForm.id)
-      if (!res.success) return this.error('执行任务失败【' + this.taskForm.taskname + '】')
-      this.success('开始执行任务【' + this.taskForm.taskname + '】')
     },
     async renderStrategy () {
       const { data: res } = await this.$axios.post('/api/task/strategy/render', { sql_strategy: this.taskForm.sql_strategy })

@@ -32,17 +32,21 @@ export default {
     async getElementStatus () {
       const { data: res } = await this.$axios.get('/api/example/report')
       if (!res.success) return this.$message.error(res.errCode)
-      console.log(res.data)
-      this.drawRecord('recordChart1', res.data)
+      this.recordChartNum = res.data.length
+      let i = 1
+      for (const key in res.data) {
+        this.drawRecord('recordChart' + i, res.data[key], key)
+        i += 1
+      }
     },
-    drawRecord (canvasId, data) {
+    drawRecord (canvasId, data, branch) {
       const container = document.getElementById(canvasId)
       container.removeAttribute('_echarts_instance_')
       const chart = this.$echarts.init(container)
       const option = {
         color: [],
         title: {
-          text: 'tenantrelease最新测试结果',
+          text: branch + '最新测试结果',
           left: 'center',
           textStyle: { fontSize: 12 }
         },
@@ -67,12 +71,15 @@ export default {
       }
       const lableMap = { success: '成功', failed: '失败', error: '错误', pending: '等待执行', running: '执行中', null: '未执行' }
       const colorMap = { success: '#67C23A', failed: '#f56c6c', error: '#E6A23C', pending: '#909399', running: '#409EFF', null: '#DDDDDD' }
-      const label = {}
-      data.forEach(item => {
-        label[item[0]] = item[1]
-      })
+      // const label = {}
+      // for (const status in data) {
+      //   label[status] = data[status]
+      // }
+      // data.forEach(item => {
+      //   label[item[0]] = item[1]
+      // })
       for (const item of ['running', 'pending', 'success', 'failed', 'error', 'null']) {
-        option.series[0].data.push({ value: label[item], name: lableMap[item] })
+        option.series[0].data.push({ value: data[item], name: lableMap[item] })
         option.color.push(colorMap[item])
       }
       chart.setOption(option)

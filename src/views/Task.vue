@@ -202,8 +202,11 @@ export default {
         } else {
           item.elapse_time = '无执行记录'
         }
-        item.content = item.content.split(',').length
+        if (item.content) {
+          item.content = item.content.split(',').length
+        }
       })
+      console.log(this.tableData)
       this.total = res.data.total
     },
     addTask () {
