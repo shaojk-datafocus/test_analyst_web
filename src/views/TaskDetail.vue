@@ -24,9 +24,21 @@
                   </el-cascader>
                 </el-form-item>
               </el-col>
-              <el-col :span="10">
+              <el-col :span="5">
                 <el-form-item label="创建者" prop="creator">
                     <el-input v-model="taskForm.creator" placeholder=""></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="5">
+                <el-form-item label="Tag" prop="tag_id">
+                  <el-select v-model="taskForm.tag_id" clearable>
+                    <el-option
+                      v-for="item in optionsTags"
+                      :key="item.value"
+                      :label="item.label"
+                      :value="item.value">
+                    </el-option>
+                  </el-select>
                 </el-form-item>
               </el-col>
             </el-row>
@@ -66,7 +78,7 @@
               </el-col>
             </el-row>
             <el-form-item label="SQL策略" prop="sql_strategy">
-              <span style="margin-right:15px">SELECT * FROM focus_test WHERE {{taskForm.sql_strategy}}</span><el-button size="small" @click="renderStrategy">验证策略</el-button>
+              <span style="margin-right:15px">SELECT * FROM focus_test, focus_tag WHERE {{taskForm.sql_strategy}}</span><el-button size="small" @click="renderStrategy">验证策略</el-button>
                 <el-input v-model="taskForm.sql_strategy" placeholder="例：module='hlt.v5.chart.testCollection'"></el-input>
             </el-form-item>
             <el-form-item label="执行计划" prop="schedule">
@@ -126,10 +138,12 @@ export default {
         ]
       },
       optionsWorker: [],
-      optionsTask: []
+      optionsTask: [],
+      optionsTags: []
     }
   },
   created () {
+    this.getTagList()
     this.getTaskList()
     this.getTaskDetail(this.$route.params.id)
     this.getWorkerList()
@@ -160,6 +174,14 @@ export default {
     }
   },
   methods: {
+    async getTagList () {
+      const { data: res } = await this.$axios.get('/api/tag/list')
+      if (!res.success) return this.$message.error(res.errCode)
+      this.optionsTags = []
+      res.data.forEach(tag => {
+        this.optionsTags.push({ value: tag.id, label: tag.name })
+      })
+    },
     async getTaskDetail (id) {
       const { data: res } = await this.$axios.get('/api/task/' + id)
       if (!res.success) return this.$message.error(res.errCode)
@@ -174,7 +196,6 @@ export default {
       this.taskForm.content = content
       this.editable = true
       const options = this.$refs.optionsTaskRef.options
-      console.log(this.taskForm)
       this.nextTask = this.taskForm.next_task ? { id: this.taskForm.next_task, taskname: options.get(this.taskForm.next_task).currentLabel } : null
       this.lastTask = this.taskForm.last_task ? { id: this.taskForm.last_task, taskname: options.get(this.taskForm.last_task).currentLabel } : null
     },

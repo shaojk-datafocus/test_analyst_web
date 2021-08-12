@@ -5,7 +5,7 @@
       <el-breadcrumb-item :to="{ path: '/example' }">用例</el-breadcrumb-item>
     </el-breadcrumb>
     <!-- 查询框 -->
-    <el-row :gutter="10">
+    <el-row :gutter="10" style="margin-bottom:10px">
       <el-col :span="6">
         <el-input
           placeholder="按名称搜索"
@@ -57,6 +57,16 @@
         </el-popconfirm>
       </el-col>
     </el-row>
+    <!-- 分支标签页 -->
+    <el-tabs v-model="editableTabsValue" type="card" @tab-click="handleTab">
+      <el-tab-pane
+        v-for="item in editableTabs"
+        :key="item.name"
+        :label="item.title"
+        :name="item.name"
+      >
+      </el-tab-pane>
+    </el-tabs>
     <!-- 用例内容表格展示 -->
     <el-table
       ref="multipleTable"
@@ -145,25 +155,40 @@
       @open="initTaskDialog"
       >
       <el-form ref="taskRef" :model="taskForm" :rules="taskRules" label-width="80px">
-        <el-form-item label="名称" prop="description">
-          <el-input v-model="taskForm.taskname"></el-input>
-        </el-form-item>
         <el-row :gutter="10">
-          <el-col :span="12">
-            <el-form-item label="站点" prop="host">
-              <el-input v-model="taskForm.host"></el-input>
+          <el-col :span="14">
+            <el-form-item label="名称" prop="description">
+              <el-input v-model="taskForm.taskname"></el-input>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="Worker" prop="worker_id">
-              <el-select v-model="taskForm.worker_id" placeholder="Worker" style="width: 100%">
+          <el-col :span="10">
+            <el-form-item label="Tag" prop="tag_id">
+              <el-select v-model="taskForm.tag_id" clearable style="width: 100%">
                 <el-option
-                  v-for="item in optionsWorker"
+                  v-for="item in optionsTags"
                   :key="item.value"
                   :label="item.label"
                   :value="item.value">
                 </el-option>
               </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="10">
+          <el-col :span="14">
+            <el-form-item label="站点" prop="host">
+              <el-input v-model="taskForm.host"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="10">
+            <el-form-item label="Worker" prop="worker_id">
+              <el-cascader
+                v-model="taskForm.worker"
+                :options="optionsWorker"
+                :props="{ expandTrigger: 'hover' }"
+                filterable clearable
+                style="width: 100%">
+              </el-cascader>
             </el-form-item>
           </el-col>
         </el-row>
@@ -238,6 +263,9 @@ export default {
       tableData: [],
       dialogVisible: false,
       taskDialogVisible: false,
+      editableTabsValue: 'All',
+      editableTabs: [],
+      tabIndex: 2,
       addExampleForm: {
         testname: '',
         module: '',
@@ -269,6 +297,7 @@ export default {
       optionsModules: [],
       optionsCreator: [],
       optionsWorker: [],
+      optionsTags: [],
       optionsStatus: [{
         value: 'success',
         label: '成功'
@@ -291,6 +320,7 @@ export default {
     }
   },
   created () {
+    this.getTagList()
     this.getExampleList()
     this.getOptions()
     this.getWorkerList()
@@ -314,9 +344,20 @@ export default {
     }
   },
   methods: {
+    async getTagList () {
+      const { data: res } = await this.$axios.get('/api/tag/list')
+      if (!res.success) return this.$message.error(res.errCode)
+      this.optionsTags = []
+      const tabs = [{ title: '全部', name: 'All', content: '全部' }]
+      res.data.forEach(tag => {
+        tabs.push({ title: tag.name, name: tag.id.toString(), content: tag.name })
+        this.optionsTags.push({ value: tag.id, label: tag.name })
+      })
+      this.editableTabs = tabs
+    },
     async getExampleList () {
       const { data: res } = await this.$axios.get('/api/example/list',
-        { params: { testname: this.testname, modules: this.modules.join(','), creator: this.creator.join(','), status: this.status.join(','), pageSize: this.pageSize, page: this.page } })
+        { params: { testname: this.testname, modules: this.modules.join(','), creator: this.creator.join(','), status: this.status.join(','), tag: this.editableTabsValue, pageSize: this.pageSize, page: this.page } })
       if (!res.success) return this.$message.error(res.errCode)
       res.data.datas.forEach(item => {
         let et = item.elapse_time
@@ -351,13 +392,15 @@ export default {
       const { data: res } = await this.$axios.get('/api/system/worker/list', { params: { status: true } })
       if (!res.success) return this.$message.error(res.errCode)
       res.data.forEach(item => {
-        this.optionsWorker.push({ value: item.id, label: item.name + '  <' + item.ip + '  ' + item.branch + '>' })
+        const branch = []
+        for (const key in JSON.parse(item.branch)) {
+          branch.push({ value: key, label: key })
+        }
+        this.optionsWorker.push({ value: item.id, label: item.name + '  <' + item.ip + '>', children: branch })
       })
-      console.log(this.optionsWorker)
     },
     async addExample () {
       this.$refs.addExampleRef.validate(async valid => {
-        console.log(valid)
         if (!valid) return
         const { data: res } = await this.$axios.post('/api/example/add', this.addExampleForm)
         if (!res.success) return this.$message.error(res.errCode)
@@ -367,28 +410,43 @@ export default {
     },
     async addTask () {
       const content = []
+      if ('worker' in this.taskForm) {
+        this.taskForm.branch = this.taskForm.worker[1]
+        this.taskForm.worker_id = this.taskForm.worker[0]
+      }
+      delete this.taskForm.worker
       this.taskForm.content.forEach(item => {
         content.push(item.id)
       })
       this.taskForm.content = content.join(',')
-      console.log(this.taskForm)
       const { data: res } = await this.$axios.post('/api/task/add', this.taskForm)
       if (!res.success) return this.$message.error(res.errCode)
       this.success('创建任务成功')
       this.$refs.multipleTable.clearSelection()
       this.taskDialogVisible = false
+      this.taskForm = {}
     },
     async addTaskAndExecute () {
-      var content = []
-      this.multipleSelection.forEach(item => {
+      const content = []
+      if ('worker' in this.taskForm) {
+        this.taskForm.branch = this.taskForm.worker[1]
+        this.taskForm.worker_id = this.taskForm.worker[0]
+      } else {
+        this.error('执行任务必须指定Worker')
+        return 0
+      }
+      this.taskForm.branch = this.taskForm.worker[1]
+      this.taskForm.worker_id = this.taskForm.worker[0]
+      this.taskForm.content.forEach(item => {
         content.push(item.id)
       })
-      console.log(content)
-      const { data: res } = await this.$axios.post('/api/task/trigger', this.taskForm)
+      this.taskForm.content = content.join(',')
+      const { data: res } = await this.$axios.post('/api/task/add/trigger', this.taskForm)
       if (!res.success) return this.$message.error(res.errCode)
-      this.success('创建任务成功')
+      this.success('开始执行任务【' + res.data.taskname + '】')
       this.$refs.multipleTable.clearSelection()
       this.taskDialogVisible = false
+      this.taskForm = {}
     },
     dialogClosed () {
       this.$refs.addExampleRef.resetFields() // 为什么resetFields无效?
@@ -400,7 +458,6 @@ export default {
       this.multipleSelection.forEach(item => {
         this.taskForm.content.push(item)
       })
-      console.log(this.taskForm.content)
     },
     handleDetail (index, row) {
       // this.$router.push('/example/' + row.id)
@@ -414,14 +471,12 @@ export default {
       this.getExampleList()
     },
     handleSizeChange (val) {
-      console.log(`每页 ${val} 条`)
       this.pageSize = val
       this.getExampleList()
     },
     handleCurrentChange (val) {
       this.page = val
       this.getExampleList()
-      console.log(`当前页: ${val}`)
     },
     deleteRow (index, rows) {
       rows.splice(index, 1)
@@ -442,6 +497,9 @@ export default {
     handleSelectionChange (val) {
       this.multipleSelection = val
     },
+    handleTab () {
+      this.getExampleList()
+    },
     async deleteTestByBatch () {
       const tests = []
       this.multipleSelection.forEach(item => {
@@ -456,12 +514,20 @@ export default {
 }
 </script>
 
+<style>
+.el-tabs__item {
+  height: 32px !important;
+  line-height: 32px !important;
+}
+.el-tabs__header {
+  margin: 0 !important;
+}
+</style>
 <style scoped>
 .el-breadcrumb {
   margin-bottom: 15px;
   font-size: 14px;
 }
-
 .status {
   font-size: 20px;
 }

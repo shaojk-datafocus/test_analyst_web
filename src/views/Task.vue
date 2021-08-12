@@ -5,7 +5,7 @@
       <el-breadcrumb-item :to="{ path: '/task' }">任务</el-breadcrumb-item>
     </el-breadcrumb>
     <!-- 查询框 -->
-    <el-row :gutter="10">
+    <el-row :gutter="10" style="margin-bottom:10px">
       <el-col :span="6">
         <el-input
           placeholder="按名称搜索"
@@ -26,6 +26,9 @@
         </el-popconfirm>
       </el-col>
     </el-row>
+    <el-tabs v-model="editableTabsValue" type="card" @tab-click="handleTab">
+      <el-tab-pane v-for="item in editableTabs" :key="item.name" :label="item.title" :name="item.name"></el-tab-pane>
+    </el-tabs>
     <!-- 用例内容表格展示 -->
     <el-table
       ref="multipleTable"
@@ -140,6 +143,8 @@ export default {
       tableData: [],
       dialogVisible: false,
       tempTaskDialogVisible: false,
+      editableTabsValue: 'All',
+      editableTabs: [],
       addTaskForm: {
         taskname: '',
         module: '',
@@ -162,6 +167,7 @@ export default {
     }
   },
   created () {
+    this.getTagList()
     this.getWorkerList()
     this.getTaskList()
     this.getExampleList()
@@ -185,12 +191,20 @@ export default {
     }
   },
   methods: {
+    async getTagList () {
+      const { data: res } = await this.$axios.get('/api/tag/list')
+      if (!res.success) return this.$message.error(res.errCode)
+      const tabs = [{ title: '全部', name: 'All', content: '全部' }]
+      res.data.forEach(tag => {
+        tabs.push({ title: tag.name, name: tag.id.toString(), content: tag.name })
+      })
+      this.editableTabs = tabs
+    },
     async getTaskList () {
       const { data: res } = await this.$axios.get('/api/task/list',
-        { params: { taskname: this.taskname, pageSize: this.pageSize, page: this.page } })
+        { params: { taskname: this.taskname, tag: this.editableTabsValue, pageSize: this.pageSize, page: this.page } })
       if (!res.success) return this.$message.error(res.errCode)
       this.tableData = res.data.datas
-      console.log(this.tableData)
       this.tableData.forEach(item => {
         let et = item.elapse_time
         if (et) {
@@ -206,12 +220,10 @@ export default {
           item.content = item.content.split(',').length
         }
       })
-      console.log(this.tableData)
       this.total = res.data.total
     },
     addTask () {
       this.$refs.addTaskRef.validate(async valid => {
-        console.log(valid)
         if (!valid) return
         const { data: res } = await this.$axios.post('/api/task/add', this.addTaskForm)
         if (!res.success) return this.$message.error(res.errCode)
@@ -224,7 +236,6 @@ export default {
       this.multipleSelection.forEach(item => {
         content.push(item.id)
       })
-      console.log(content)
       const { data: res } = await this.$axios.post('/api/task/trigger', { taskname: null, description: this.tempTaskForm.description, creator: '阿斯蒂芬', content: content })
       if (!res.success) return this.$message.error(res.errCode)
       this.success('创建临时任务成功')
@@ -266,14 +277,12 @@ export default {
       this.getTaskList()
     },
     handleSizeChange (val) {
-      console.log(`每页 ${val} 条`)
       this.pageSize = val
       this.getTaskList()
     },
     handleCurrentChange (val) {
       this.page = val
       this.getTaskList()
-      console.log(`当前页: ${val}`)
     },
     toggleSelection (row, column, event) {
       if (column.no <= 1) {
@@ -290,14 +299,15 @@ export default {
     handleSelectionChange (val) {
       this.multipleSelection = val
     },
+    handleTab () {
+      this.getTaskList()
+    },
     async getWorkerList () {
       const { data: res } = await this.$axios.get('/api/system/worker/list', { params: { status: true } })
       if (!res.success) return this.$message.error(res.errCode)
-      console.log(res.data)
       res.data.forEach(item => {
         this.optionsWorker[item.id] = item.name
       })
-      console.log(this.optionsWorker)
     },
     async getExampleList () {
       const { data: res } = await this.$axios.get('/api/example/list?testname=&modules=&creator=&status=&pageSize=50&page=1')

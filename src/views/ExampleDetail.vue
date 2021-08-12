@@ -13,17 +13,29 @@
                     <el-input v-model="testForm.testname" placeholder="请输入用例名称"></el-input>
                 </el-form-item>
                 <el-row :gutter="20">
-                    <el-col :span="9">
+                    <el-col :span="8">
                         <el-form-item label="模块路径" prop="module">
                             <el-input v-model="testForm.module" placeholder="例: hlt.v5.example.testCollection"></el-input>
                         </el-form-item>
                     </el-col>
-                    <el-col :span="9">
+                    <el-col :span="8">
                         <el-form-item label="函数名" prop="function">
                             <el-input v-model="testForm.function" placeholder="例: test_example_01"></el-input>
                         </el-form-item>
                     </el-col>
-                    <el-col :span="6">
+                    <el-col :span="5">
+                        <el-form-item label="Tag" prop="tag_id">
+                          <el-select v-model="testForm.tag_id" clearable>
+                            <el-option
+                              v-for="item in optionsTags"
+                              :key="item.value"
+                              :label="item.label"
+                              :value="item.value">
+                            </el-option>
+                          </el-select>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="3">
                         <el-form-item label="创建者" prop="creator">
                             <el-input v-model="testForm.creator" placeholder=""></el-input>
                         </el-form-item>
@@ -120,6 +132,7 @@ export default {
     return {
       editable: false,
       testForm: {},
+      optionsTags: [],
       rules: {
         testname: [
           { required: true, message: '请输入用例名称', trigger: 'blur' }
@@ -135,6 +148,7 @@ export default {
     }
   },
   created () {
+    this.getTagList()
     this.getExampleDetail(this.$route.params.id)
     this.getExampleRecord(this.$route.params.id)
   },
@@ -157,19 +171,25 @@ export default {
     }
   },
   methods: {
+    async getTagList () {
+      const { data: res } = await this.$axios.get('/api/tag/list')
+      if (!res.success) return this.$message.error(res.errCode)
+      this.optionsTags = []
+      res.data.forEach(tag => {
+        this.optionsTags.push({ value: tag.id, label: tag.name })
+      })
+    },
     async getExampleDetail (id) {
       const { data: res } = await this.$axios.get('/api/example/' + id)
       if (!res.success) return this.$message.error(res.errCode)
       this.testForm = res.data
       this.editable = true
-      console.log(this.testForm)
     },
     async getExampleRecord (id) {
       const { data: res } = await this.$axios.get('/api/example/' + id + '/record')
       if (!res.success) return this.$message.error(res.errCode)
       this.recordData = []
       this.drawRecord(res.data)
-      console.log(res.data)
       res.data.forEach((record) => {
         let info
         if (record.info) {
@@ -195,7 +215,6 @@ export default {
         record.elapse_time = elapseTime
         this.recordData.push(record)
       })
-      console.log(this.recordData)
     },
     async saveExample () {
       const { data: res } = await this.$axios.post('/api/example/update', {
